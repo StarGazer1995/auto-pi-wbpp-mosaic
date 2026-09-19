@@ -204,7 +204,9 @@ def resolve_filter(name, kind, nm_spec, meta_filters):
     bands = parse_bands(nm_spec)
     label = name.strip()
     if not label and meta_filters:
-        label = sorted(meta_filters)[0]
+        mf = sorted(meta_filters)[0]
+        # 只用命令行指定了类别/波长时，别把元数据里的滤镜名当成最终结论
+        label = f"自定义（元数据 FILTER={mf}，类别/波长由命令行指定）" if (kind or bands) else mf
     if not label:
         label = "(未标注)"
     if not kind:
