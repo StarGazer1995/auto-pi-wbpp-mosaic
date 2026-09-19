@@ -1,5 +1,8 @@
 # 深空通用处理流水线（seestar_pipeline.sh）
 
+> 代码托管：<https://github.com/StarGazer1995/auto-pi-wbpp-mosaic>
+> 本文件是详细参考；安装与前置条件见仓库 `README.md`。
+
 与目标和设备都无关的一键流程：给一个光帧目录 + 目标名，自动跑完 分析 → 分组 → 叠加 →
 流量校准/梯度校正 → 拼接 → 校色 → 预览归档。
 
@@ -35,6 +38,8 @@ cd ~/workspace/pixinsight
 --spcc                    对最终 master 做 SPCC
 --profile NAME            设备/滤镜档案：auto（默认，自动识别）| 相机 id | 曲线组 id | none
 --filter NAME             手动指定滤镜名（覆盖元数据 FILTER，用于 ASIAir 这类不写 FILTER 的数据）
+--filter-kind KIND        滤镜类别：broadband | light-pollution | duoband | narrowband
+--filter-nm SPEC          直接给通带波长（**分号分隔**）："Ha=656.3/7;OIII=500.7/7"
 --min-group N             少于 N 帧的分组丢弃（默认 30；RAW/单反会话常用 10）
 --no-platesolve           WBPP 跳过 plate solve（RAW/无坐标时省时间）
 --mars FILE               指定 MARS 库；默认自动取 MARS数据包 里最新的 MARS-DR1-*.xmars
@@ -96,6 +101,51 @@ NAS: /media/activities/<目标>/PixInsight/           归档（master + 预览 +
 组合曲线支持的双窄带/光害滤镜：`Opt. L-eXtreme` / `L-eNhance` / `L-Ultimate`、
 `Antlia ALP-T`、`Antlia Triband`、`Baader UHC-S`
 （如 `Sony CMOS R-UVIRcut / Opt. L-eXtreme`）。
+
+### 滤镜类别与波长标注
+
+`pipeline_profiles.jsh` 里另有一张**滤镜目录**（14 条），每条记录：类别（`broadband` /
+`light-pollution` / `duoband` / `narrowband`）与通带（谱线名 + 中心波长 nm + 半宽 nm）：
+
+| 滤镜 id | 类别 | 通带 | 组合曲线 |
+|---|---|---|---|
+| `none` / `ircut` | broadband | — | — |
+| `lp` | light-pollution | Ha（近似） | — |
+| `uhcs` | light-pollution | — | ✓ Baader UHC-S |
+| `lextreme` | **duoband** | Ha 656.3/7 + OIII 500.7/7 | ✓ |
+| `lultimate` | **duoband** | Ha 656.3/3 + OIII 500.7/3 | ✓ |
+| `lenhance` | **duoband** | Ha + OIII + Hβ | ✓ |
+| `alpt` | **duoband** | Ha 656.3/5 + OIII 500.7/5 | ✓ |
+| `triband` | **duoband** | Ha + OIII + Hβ | ✓ |
+| `nbz` | **duoband** | Ha 656.3/12 + OIII 500.7/12 | — |
+| `dual-narrowband` | **duoband** | Ha + OIII（未指定带宽） | ✓（近似，按 L-eXtreme） |
+| `ha` / `oiii` / `sii` | narrowband | 单线 | — |
+
+三种标注方式（优先级：波长 > 名字 > 元数据 `FILTER`）：
+
+```bash
+--filter "L-eXtreme"                                     # 按型号
+--filter-kind duoband --filter-nm "Ha=656.3/7;OIII=500.7/7"   # 按波长（分号分隔！）
+--filter "我的双窄带" --filter-nm "656.3/6;500.7/6"        # 名字 + 波长
+```
+
+给波长时会自动判定类别，并按带宽找最接近的组合曲线（找不到就用相机底座曲线并在日志里说明）。
+
+结果除了用于选曲线，还会写进输出文件的 FITS 关键字，跟着文件走：
+
+| 关键字 | 含义 | 例子 |
+|---|---|---|
+| `PIPEFILT` | 滤镜档案 id | `lextreme` / `custom-duoband` |
+| `PIPEFLAB` | 描述（ASCII） | `(Ha 656.3nm/7nm + OIII 500.7nm/7nm)` |
+| `PIPEKIND` | 类别 | `duoband` |
+| `PIPEDUO` | **是否双/多窄带** | `T` |
+| `PIPEBND` | 通带汇总 | `Ha 656.3nm/7nm + OIII 500.7nm/7nm` |
+| `PIPEHA` / `PIPEOIII` | 单线波长(半宽) | `656.3/7` |
+| `PIPEPROF` / `PIPESET` | 相机档案 / 曲线组 | `imx571` / `imx571-uvircut` |
+
+查看文件里的标注：`pipeline_profile_probe.js,...,kw=1`。
+FITS 关键字只允许 ASCII，中文会被清洗（保留括号与数字）。
+`analysis.md` 里对双窄带数据会额外提示"颜色为合成色，SPCC 只能做相对标定"。
 
 离线校验（不启动 PI）：
 
