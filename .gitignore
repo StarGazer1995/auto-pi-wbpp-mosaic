@@ -1,0 +1,47 @@
+# 处理产物 / 工作目录：不进仓库
+*.xisf
+*.xdrz
+*.xsif
+*.fit
+*.fits
+*.fts
+*.arw
+*.cr2
+*.cr3
+*.nef
+*.nrw
+*.dng
+*.raf
+*.rw2
+*.orf
+*.pef
+*.srw
+*.xmars
+*.xpsd
+*.jpg
+*.jpeg
+*.png
+*.tif
+*.tiff
+*.log
+
+# 工作目录
+lights/
+groups/
+corrected/
+mosaic/
+unions/
+out/
+debayered/
+registered/
+seestar_work/
+work/
+*.pxiproject/
+
+# 系统 / 编辑器
+.DS_Store
+Thumbs.db
+__pycache__/
+*.pyc
+.vscode/
+.idea/
